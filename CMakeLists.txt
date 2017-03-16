@@ -51,7 +51,7 @@ ExternalProject_Add(
 find_package(Threads REQUIRED)
 
 include_directories("${CMAKE_BINARY_DIR}")
-include_directories("${CMAKE_BINARY_DIR}/include/jit")
+include_directories("${CMAKE_BINARY_DIR}/include")
 
 set(SOURCE_FILES
 	"${CMAKE_CURRENT_SOURCE_DIR}/program.c"

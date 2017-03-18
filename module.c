@@ -2,7 +2,6 @@
 #include "from_bytes.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 jit_type_t tvm_module_get_type
     (tvm_module_t module, unsigned char** buf)
@@ -24,15 +23,7 @@ jit_type_t tvm_module_get_type
     }
 }
 
-jit_type_t tvm_module_get_pointer_type
-    (tvm_module_t module, unsigned char** buf)
-{
-    jit_type_t base = tvm_module_get_type(module, buf);
-    
-    return jit_type_create_pointer(base, 0);
-}
-
-
+/*Define path separator*/
 #ifdef _WIN32
 #define DIR_SEP "\\"
 #else
@@ -44,6 +35,7 @@ void tvm_module_build
 {
     unsigned char* buf = module->bytecode;
     
+    //remove header if present
     if(module->bytecode_end >= buf + 22 && jit_strncmp(buf, "#!/usr/bin/env tripel\n", 22) == 0)
         buf += 22;
     
@@ -139,7 +131,7 @@ void tvm_module_build
         //gc alloc global var space and set to 0
         size_t type_size = jit_type_get_size(type);
         module->globals[i].data = GC_MALLOC(type_size);
-        memset(module->globals[i].data, 0, type_size);
+        jit_memset(module->globals[i].data, 0, type_size);
         
         //set type
         module->globals[i].type = type;
@@ -162,6 +154,7 @@ void tvm_module_build
         
         jit_dynlib_handle_t handle;
         
+        //load natiive library
         handle = jit_dynlib_open(name);
         if(handle == NULL)
         {
@@ -169,6 +162,7 @@ void tvm_module_build
             exit(EXIT_FAILURE);
         }
         
+        //get the number of functions to import
         jit_ushort l_num = tvm_ushort_from_bytes(&buf);
         
         char * fname;
@@ -183,6 +177,7 @@ void tvm_module_build
             
             module->c_funcs_names[i] = fname;
             
+            //get function pointer from lib
             void * functor = jit_dynlib_get_symbol(handle, fname);
             if(functor == NULL)
             {
@@ -192,13 +187,17 @@ void tvm_module_build
             
             jit_type_t ret_type = tvm_module_get_type(module, &buf);
             
+            //read parameters number
             params_num = tvm_ushort_from_bytes(&buf);
+            
             params = jit_malloc(sizeof(jit_type_t) * params_num);
             
+            //read parameters types
             int k;
             for(k = 0; k < params_num; ++k)
                 params[k] = tvm_module_get_type(module, &buf);
             
+            //fill funcptr record at index i in the module
             module->c_funcs[i].signature = jit_type_create_signature(jit_abi_cdecl, ret_type, params, params_num, 0);
             module->c_funcs[i].functor = functor;
             
@@ -209,17 +208,17 @@ void tvm_module_build
     //start
     jit_ushort stack_len, locals_num, labels_num;
     
-    jit_type_t signature = jit_type_create_signature(jit_abi_cdecl, jit_type_int, NULL, 0, 0);
-    
+    //get properties
     stack_len = tvm_ushort_from_bytes(&buf);
     locals_num = tvm_ushort_from_bytes(&buf);
     labels_num = tvm_ushort_from_bytes(&buf);
     
+    //get function code length
     jit_uint len = tvm_uint_from_bytes(&buf);
     
-    tvm_func_data_t func_data = tvm_func_data_create(module, buf, buf + len, stack_len, locals_num, labels_num);
+    tvm_func_data_t func_data = tvm_func_data_create(module, buf, buf + len, "<start>", stack_len, locals_num, labels_num);
     
-    module->start = tvm_function_create(signature, func_data);
+    module->start = tvm_function_create(tvm_start_signature, func_data);
         
     buf += len;
     
@@ -231,29 +230,40 @@ void tvm_module_build
     
     jit_ushort params_num;
     jit_type_t * params;
+    
     for(i = 0; i < num; ++i)
     {
-        module->funcs_names[i] = buf;
+        name = buf;
         while(*(buf++)) ;
         
+        module->funcs_names[i] = name;
+        
+        //get return type
         jit_type_t ret_type = tvm_module_get_type(module, &buf);
         
+        //read the number of parameters
         params_num = tvm_ushort_from_bytes(&buf);
+        
         params = jit_malloc(sizeof(jit_type_t) * params_num);
         
+        //read parameters types
         int k;
         for(k = 0; k < params_num; ++k)
             params[k] = tvm_module_get_type(module, &buf);
         
-        signature = jit_type_create_signature(jit_abi_cdecl, ret_type, params, params_num, 0);
+        //create signature
+        jit_type_t signature = jit_type_create_signature(jit_abi_cdecl, ret_type, params, params_num, 0);
         
+        //get properties
         stack_len = tvm_ushort_from_bytes(&buf);
         locals_num = tvm_ushort_from_bytes(&buf);
         labels_num = tvm_ushort_from_bytes(&buf);
         
+        //get function code length
         len = tvm_uint_from_bytes(&buf);
         
-        func_data = tvm_func_data_create(module, buf, buf + len, stack_len, locals_num, labels_num);
+        //create function
+        func_data = tvm_func_data_create(module, buf, buf + len, name, stack_len, locals_num, labels_num);
         module->funcs[i] = tvm_function_create(signature, func_data);
         
         buf += len;
@@ -471,7 +481,9 @@ void tvm_module_free
     
     for(i = 0; i < module->globals_len; ++i)
     {
+        //tells GC to free global data
         GC_free(module->globals[i].data);
+        
         jit_type_free(module->globals[i].type);
     }
     

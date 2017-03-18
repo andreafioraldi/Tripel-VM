@@ -39,19 +39,38 @@
 #define TYPEID_STRUCT               0x1a
 #define TYPEID_LIB_STRUCT           0x1b
 
+/*
+!!!ATTENTION!!!
+This library doesn't provide any kind of information hiding
+due to the need of strong optimization (like macro for inlinig).
+This choice is justified by the high importance of performance
+in this kind of applications.
+Be careful or you will break all!
+*/
+
+/*Recurrent functions signature*/
+extern jit_type_t tvm_start_signature;
 extern jit_type_t tvm_gc_malloc_signature;
+
+/*String type*/
 extern jit_type_t tvm_type_string;
 
-extern char const* tvm_libpath;
-extern const size_t tvm_libpath_len;
+/*Directory where libs are stored*/
+extern char* tvm_libpath;
+extern size_t tvm_libpath_len;
 
+/*
+Setup macro, it must be the first instruction in main()
+or the library will not works.
+It also initialize the garbage collector.
+*/
 #define TVM_INIT \
 do { \
     GC_INIT(); \
-    _tvm_libpath = getenv("HOP_LIBPATH"); \
-    if(_tvm_libpath) \
-        _tvm_libpath_len = jit_strlen(_tvm_libpath); \
-    else _tvm_libpath_len = 0; \
+    tvm_libpath = getenv("TRIPEL_LIBPATH"); \
+    if(tvm_libpath) \
+        tvm_libpath_len = jit_strlen(tvm_libpath); \
+    else tvm_libpath_len = 0; \
     \
     jit_type_t param[] = { jit_type_ulong }; \
     \
@@ -61,8 +80,16 @@ do { \
         param, 1, 0 \
     ); \
     \
+    jit_type_t params[] = { jit_type_int, jit_type_void_ptr }; \
+    \
+    tvm_start_signature = jit_type_create_signature( \
+        jit_abi_cdecl, \
+        jit_type_int, \
+        params, 2, 0 \
+    ); \
+    \
     tvm_type_string = jit_type_create_pointer(jit_type_sbyte, 0); \
-    jit_type_t types_table = { \
+    jit_type_t types_table[] = { \
         jit_type_sbyte, \
         jit_type_ubyte, \
         jit_type_short, \
@@ -91,8 +118,11 @@ do { \
         jit_type_sys_long_double \
     }; \
     tvm_types_table = types_table; \
+    \
+    tvm_type_string = jit_type_create_pointer(jit_type_sbyte, 0); \
 } while(0)
 
+/*Primitive types table*/
 extern jit_type_t* tvm_types_table;
 
 struct _tvm_module;
@@ -101,12 +131,15 @@ struct _tvm_program;
 typedef struct _tvm_program* tvm_program_t;
 typedef struct _tvm_module* tvm_module_t;
 
-
+/*
+Record used to store all info nedded by a function to be build.
+*/
 struct _tvm_func_data
 {
     tvm_module_t module;
     unsigned char* begin;
     unsigned char* end;
+    char* name;
     jit_ushort stack_len;
     jit_ushort locals_num;
     jit_ushort labels_num;
@@ -114,22 +147,25 @@ struct _tvm_func_data
 
 typedef struct _tvm_func_data* tvm_func_data_t;
 
+/*Alloc a tvm_func_data_t and set the fields*/
 tvm_func_data_t tvm_func_data_create
-    (tvm_module_t module, unsigned char* begin, unsigned char* end, jit_ushort stack_len, jit_ushort locals_num, jit_ushort labels_num);
+    (tvm_module_t module, unsigned char* begin, unsigned char* end, char* name, jit_ushort stack_len, jit_ushort locals_num, jit_ushort labels_num);
 
+/*Create a jit_function and insert data*/
 jit_function_t tvm_function_create
     (jit_type_t signature, tvm_func_data_t data);
 
+/*Get data stored in a jit_function*/
 #define tvm_function_get_data(func) \
     (tvm_func_data_t) jit_function_get_meta(func, 0)
 
-//called on demand
+/*Build process, called on demand*/
 int tvm_function_build
     (jit_function_t function);
 
-
-
-
+/*
+Record used to store a c function pointer and its signature.
+*/
 struct _tvm_funcptr
 {
     void* functor;
@@ -138,11 +174,13 @@ struct _tvm_funcptr
 
 typedef struct _tvm_funcptr tvm_funcptr_t;
 
+/*Free the signature*/
 #define tvm_funcptr_free(funcptr) \
     jit_type_free((funcptr).signature)
 
-
-
+/*
+Record used to store a struct type representation (inside jit) and its fields names.
+*/
 struct _tvm_struct
 {
     char** fields_names;//pointers to bytecode, must not freed
@@ -151,8 +189,9 @@ struct _tvm_struct
 
 typedef struct _tvm_struct tvm_struct_t;
 
-
-
+/*
+Record that contains a global var allocated by the GC and its type.
+*/
 struct _tvm_global_var
 {
     void* data;//use GC_malloc
@@ -161,8 +200,9 @@ struct _tvm_global_var
 
 typedef struct _tvm_global_var tvm_global_var_t;
 
-
-
+/*
+Record that represents a module with all of its proprties.
+*/
 struct _tvm_module
 {
     tvm_program_t program;
@@ -201,42 +241,53 @@ struct _tvm_module
     jit_ushort ext_funcs_len;
 };
 
+/*Read an ushort and get a struct by index from a module*/
 #define tvm_module_get_struct_type(module, buf) \
     jit_type_copy((module)->structs[tvm_ushort_from_bytes(buf)].type)
 
+/*Read an ushort and get an external struct by index from a module*/
 #define tvm_module_get_lib_struct_type(module, buf) \
     jit_type_copy((module)->ext_structs[tvm_ushort_from_bytes(buf)]->type)
 
+/*Read and get a type associated with a module*/
 jit_type_t tvm_module_get_type
     (tvm_module_t module, unsigned char** buf); //must freed with jit_type_free
 
-jit_type_t tvm_module_get_pointer_type
-    (tvm_module_t module, unsigned char** buf); //must freed with jit_type_free
+/*Read a type associated with a module and get its pointer type*/
+#define tvm_module_get_pointer_type(module, buf) \
+    jit_type_create_pointer(tvm_module_get_type(module, buf), 0)
 
+/*Parse bytecode and fill module fields*/
 void tvm_module_build
     (tvm_module_t module);
 
+/*Alloc a module and set bytecode pointers fields*/
 tvm_module_t tvm_module_create
     (tvm_program_t program, unsigned char* bytecode, unsigned char* bytecode_end);
 
+/*Create and build a module*/
 tvm_module_t tvm_module_create_build
     (tvm_program_t program, unsigned char* bytecode, unsigned char* bytecode_end);
 
+/*Free a module and all of its fields*/
 void tvm_module_free
     (tvm_module_t module);
-
-
 
 //linked list
 struct _tvm_module_node;
 typedef struct _tvm_module_node* tvm_module_node_t;
 
+/*Node of a linked list of modules*/
 struct _tvm_module_node
 {
     tvm_module_t module;
     tvm_module_node_t next;
 };
 
+
+/*
+Record that represents a Tripel program.
+*/
 struct _tvm_program
 {
     tvm_module_t start;
@@ -244,25 +295,29 @@ struct _tvm_program
     jit_context_t context;
 };
 
+/*Alloc a program and set bytecode pointers in start module*/
 tvm_program_t tvm_program_create
     (unsigned char* bytecode, unsigned char* bytecode_end);
 
+/*Search a module in a program*/
 tvm_module_t tvm_program_find_module
     (tvm_program_t program, char* name);
 
+/*Build start module*/
 #define tvm_program_build(program) \
     tvm_module_build((program)->start)
 
-tvm_program_t tvm_program_create
-    (unsigned char* bytecode, unsigned char* bytecode_end);
-
+/*Create and build a program*/
 tvm_program_t tvm_program_create_build
     (unsigned char* bytecode, unsigned char* bytecode_end);
 
+/*Free a program, destroy the jit_context and free all modules*/
 void tvm_program_free
     (tvm_program_t program);
 
+/*Run start function of the start module*/
 #define tvm_program_run(program, argc, argv) \
     ((int (*)(int, char**)) jit_function_to_closure((program)->start->start))(argc, argv)
+
 
 #endif

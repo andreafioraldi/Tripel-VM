@@ -1,13 +1,16 @@
 #include "tvm.h"
 
+/**** exported globals var ****/
+jit_type_t tvm_start_signature;
 jit_type_t tvm_gc_malloc_signature;
+
 jit_type_t tvm_type_string;
 
-char const* tvm_libpath;
-const size_t tvm_libpath_len;
+char* tvm_libpath;
+size_t tvm_libpath_len;
 
 jit_type_t* tvm_types_table;
-
+/******************************/
 
 tvm_module_t tvm_program_find_module
 	(tvm_program_t program, char* name)
@@ -38,6 +41,7 @@ tvm_program_t tvm_program_create
 	return program;
 }
 
+
 tvm_program_t tvm_program_create_build
 	(unsigned char* bytecode, unsigned char* bytecode_end)
 {
@@ -50,9 +54,11 @@ tvm_program_t tvm_program_create_build
 	return program;
 }
 
+
 void tvm_program_free
 	(tvm_program_t program)
 {
+    //free modules linked list
 	tvm_module_node_t node = program->modules;
 	
 	tvm_module_node_t temp;
@@ -68,8 +74,10 @@ void tvm_program_free
 		node = temp;
 	}
 	
+	//free start module
 	tvm_module_free(program->start);
 	
+	//destroy jit context
 	jit_context_destroy(program->context);
 	
 	jit_free(program);

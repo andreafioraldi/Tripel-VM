@@ -1,10 +1,22 @@
 #ifndef __TVM__FROM_BYTES_H
 #define __TVM__FROM_BYTES_H
 
+//Placed by CMAKE script
 ${LITTLE_ENDIAN_DEFINITION}
+
+/*
+from_bytes functions:
+> jit_TYPE tvm_TYPE_from_bytes(unsigned char** buf)
+
+Read a TYPE var from bytes.
+*/
 
 #ifdef LITTLE_ENDIAN
 
+/*
+Helper macro to define from_bytes functions
+for a specified type
+*/
 #define __FROM_BYTES_DEF(type) \
 static jit_##type tvm_##type##_from_bytes \
     (unsigned char** buf) \
@@ -25,7 +37,8 @@ __FROM_BYTES_DEF(float64)
 
 #else
 
-#define __NEXT_BYTE(type) ((type)*((*buf)++) & 0xFF)
+/*Helper macro to get a byte from buf and increment *buf*/
+#define __NEXT_BYTE(type) ((type)((*buf)++) & 0xFF)
 
 static jit_ulong tvm_ulong_from_bytes
     (unsigned char** buf)

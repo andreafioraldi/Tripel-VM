@@ -4,12 +4,10 @@ project("Tripel Virtual Machine" VERSION "1.0" LANGUAGES "C")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
 
-#add_subdirectory ("${CMAKE_CURRENT_SOURCE_DIR}/lib")
-
 #enable optimization for gcc
-if(CMAKE_COMPILER_IS_GNUCC)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os")
-endif(CMAKE_COMPILER_IS_GNUCC)
+#if(CMAKE_COMPILER_IS_GNUCC)
+#	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os")
+#endif(CMAKE_COMPILER_IS_GNUCC)
 
 #set default prefix to /usr in Unix
 if (UNIX AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -75,10 +73,9 @@ target_link_libraries(tvm
     "${CMAKE_BINARY_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}jitdynamic${CMAKE_STATIC_LIBRARY_SUFFIX}"
     "${CMAKE_BINARY_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gc${CMAKE_STATIC_LIBRARY_SUFFIX}"
     "${CMAKE_THREAD_LIBS_INIT}"
-    ${LIB_DL}
+    "${LIB_DL}"
     "m"
 )
-
 
 
 

@@ -69,7 +69,7 @@ void tvm_module_build
     int i, j;
     
     //read the number of string constants
-    jit_ushort num = tvm_ushort_from_bytes(&buf);
+    jit_ushort num = tvm_ushort_from_bytes(buf);
     
     //alloc space for strings
     module->strings = jit_malloc(sizeof(jit_sbyte*) * num);
@@ -93,7 +93,7 @@ void tvm_module_build
     }
     
     //read the number of structure definitions
-    num = tvm_ushort_from_bytes(&buf);
+    num = tvm_ushort_from_bytes(buf);
     
     //alloc space for structs
     module->structs = jit_malloc(sizeof(tvm_struct_t) * num);
@@ -109,7 +109,7 @@ void tvm_module_build
         module->structs_names[i] = name;
         
         //read struct fields number
-        jit_ushort fields_num = tvm_ushort_from_bytes(&buf);
+        jit_ushort fields_num = tvm_ushort_from_bytes(buf);
         
         char** fields_names = jit_malloc(sizeof(char*) * fields_num);
         
@@ -134,7 +134,7 @@ void tvm_module_build
     }
     
     //read the number of global vars
-    num = tvm_ushort_from_bytes(&buf);
+    num = tvm_ushort_from_bytes(buf);
     
     //alloc globals vars container and add it to garbage collector roots
     module->globals = jit_malloc(sizeof(tvm_global_var_t) * num);
@@ -163,14 +163,14 @@ void tvm_module_build
     }
     
     //read the number of native function pointers
-    num = tvm_ushort_from_bytes(&buf);
+    num = tvm_ushort_from_bytes(buf);
     
     module->c_funcs = jit_malloc(sizeof(tvm_funcptr_t) * num);
     module->c_funcs_names = jit_malloc(sizeof(char*) * num);
     module->c_funcs_len = num;
     
     //read the number of native libraries
-    jit_ushort libs_num = tvm_ushort_from_bytes(&buf);
+    jit_ushort libs_num = tvm_ushort_from_bytes(buf);
     
     for(i = 0; i < libs_num; ++i)
     {
@@ -188,7 +188,7 @@ void tvm_module_build
         }
         
         //get the number of functions to import
-        jit_ushort l_num = tvm_ushort_from_bytes(&buf);
+        jit_ushort l_num = tvm_ushort_from_bytes(buf);
         
         char * fname;
         jit_ushort params_num;
@@ -213,7 +213,7 @@ void tvm_module_build
             jit_type_t ret_type = tvm_module_get_type(module, &buf);
             
             //read parameters number
-            params_num = tvm_ushort_from_bytes(&buf);
+            params_num = tvm_ushort_from_bytes(buf);
             
             params = jit_malloc(sizeof(jit_type_t) * params_num);
             
@@ -234,12 +234,12 @@ void tvm_module_build
     jit_ushort stack_len, locals_num, labels_num;
     
     //get properties
-    stack_len = tvm_ushort_from_bytes(&buf);
-    locals_num = tvm_ushort_from_bytes(&buf);
-    labels_num = tvm_ushort_from_bytes(&buf);
+    stack_len = tvm_ushort_from_bytes(buf);
+    locals_num = tvm_ushort_from_bytes(buf);
+    labels_num = tvm_ushort_from_bytes(buf);
     
     //get function code length
-    jit_uint len = tvm_uint_from_bytes(&buf);
+    jit_uint len = tvm_uint_from_bytes(buf);
     
     tvm_func_data_t func_data = tvm_func_data_create(module, buf, buf + len, "<start>", stack_len, locals_num, labels_num);
     
@@ -248,7 +248,7 @@ void tvm_module_build
     buf += len;
     
     //read the number of functions
-    num = tvm_ushort_from_bytes(&buf);
+    num = tvm_ushort_from_bytes(buf);
     
     module->funcs = jit_malloc(sizeof(jit_function_t) * num);
     module->funcs_names = jit_malloc(sizeof(char*) * num);
@@ -267,7 +267,7 @@ void tvm_module_build
         jit_type_t ret_type = tvm_module_get_type(module, &buf);
         
         //read the number of parameters
-        params_num = tvm_ushort_from_bytes(&buf);
+        params_num = tvm_ushort_from_bytes(buf);
         
         params = jit_malloc(sizeof(jit_type_t) * params_num);
         
@@ -280,12 +280,12 @@ void tvm_module_build
         jit_type_t signature = jit_type_create_signature(jit_abi_cdecl, ret_type, params, params_num, 0);
         
         //get properties
-        stack_len = tvm_ushort_from_bytes(&buf);
-        locals_num = tvm_ushort_from_bytes(&buf);
-        labels_num = tvm_ushort_from_bytes(&buf);
+        stack_len = tvm_ushort_from_bytes(buf);
+        locals_num = tvm_ushort_from_bytes(buf);
+        labels_num = tvm_ushort_from_bytes(buf);
         
         //get function code length
-        len = tvm_uint_from_bytes(&buf);
+        len = tvm_uint_from_bytes(buf);
         
         //create function
         func_data = tvm_func_data_create(module, buf, buf + len, name, stack_len, locals_num, labels_num);
@@ -295,10 +295,10 @@ void tvm_module_build
     }
     
     //external symbols counters
-    module->ext_structs_len = tvm_ushort_from_bytes(&buf);
-    module->ext_globals_len = tvm_ushort_from_bytes(&buf);
-    module->ext_c_funcs_len = tvm_ushort_from_bytes(&buf);
-    module->ext_funcs_len = tvm_ushort_from_bytes(&buf);
+    module->ext_structs_len = tvm_ushort_from_bytes(buf);
+    module->ext_globals_len = tvm_ushort_from_bytes(buf);
+    module->ext_c_funcs_len = tvm_ushort_from_bytes(buf);
+    module->ext_funcs_len = tvm_ushort_from_bytes(buf);
     
     //alloc external symbols
     module->ext_structs = jit_malloc(sizeof(void*) * module->ext_structs_len);
@@ -313,7 +313,7 @@ void tvm_module_build
     jit_function_t** ext_funcs_it = module->ext_funcs;
     
     //read the number of libraries
-    num = tvm_ushort_from_bytes(&buf);
+    num = tvm_ushort_from_bytes(buf);
     
     for(i = 0; i < num; ++i)
     {
@@ -376,7 +376,7 @@ void tvm_module_build
         }
         
         //read the number of structure definitions to import from the lib
-        jit_ushort l_num = tvm_ushort_from_bytes(&buf);
+        jit_ushort l_num = tvm_ushort_from_bytes(buf);
         
         for(j = 0; j < l_num; ++j)
         {
@@ -397,7 +397,7 @@ void tvm_module_build
         }
         
         //read the number of global vars to import from the lib
-        l_num = tvm_ushort_from_bytes(&buf);
+        l_num = tvm_ushort_from_bytes(buf);
         
         for(j = 0; j < l_num; ++j)
         {
@@ -420,7 +420,7 @@ void tvm_module_build
         }
         
         //read the number of native functions to import from the lib
-        l_num = tvm_ushort_from_bytes(&buf);
+        l_num = tvm_ushort_from_bytes(buf);
         
         for(j = 0; j < l_num; ++j)
         {
@@ -441,7 +441,7 @@ void tvm_module_build
         }
         
         //read the number of functions to import from the lib
-        l_num = tvm_ushort_from_bytes(&buf);
+        l_num = tvm_ushort_from_bytes(buf);
         
         for(j = 0; j < l_num; ++j)
         {

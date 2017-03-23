@@ -29,43 +29,38 @@
 //Placed by CMAKE script
 ${LITTLE_ENDIAN_DEFINITION}
 
-/*
-from_bytes functions:
-> jit_TYPE tvm_TYPE_from_bytes(unsigned char** buf)
-
-Read a TYPE var from bytes.
-*/
-
 #ifdef LITTLE_ENDIAN
 
-/*
-Helper macro to define from_bytes functions
-for a specified type
-*/
-#define __FROM_BYTES_DEF(type) \
-static jit_##type tvm_##type##_from_bytes \
-    (unsigned char** buf) \
-{ \
-    jit_##type result = *(jit_##type *)*buf; \
-    *buf += sizeof(jit_##type ); \
-    return result; \
-}
+#define tvm_short_from_bytes(buf) \
+    (buf+=2, *(jit_short*)buf)
 
-__FROM_BYTES_DEF(ulong)
-__FROM_BYTES_DEF(long)
-__FROM_BYTES_DEF(uint)
-__FROM_BYTES_DEF(int)
-__FROM_BYTES_DEF(ushort)
-__FROM_BYTES_DEF(short)
-__FROM_BYTES_DEF(float32)
-__FROM_BYTES_DEF(float64)
+#define tvm_ushort_from_bytes(buf) \
+    ((buf)+=2, *(jit_ushort*)(buf))
+
+#define tvm_int_from_bytes(buf) \
+    ((buf)+=4, *(jit_int*)(buf))
+
+#define tvm_uint_from_bytes(buf) \
+    ((buf)+=4, *(jit_uint*)(buf))
+
+#define tvm_long_from_bytes(buf) \
+    ((buf)+=8, *(jit_long*)(buf))
+    
+#define tvm_ulong_from_bytes(buf) \
+    ((buf)+=8, *(jit_ulong*)(buf))
+
+#define tvm_float32_from_bytes(buf) \
+    ((buf)+=4, *(jit_float32*)(buf))
+
+#define tvm_float64_from_bytes(buf) \
+    ((buf)+=8, *(jit_float64*)(buf))
 
 #else
 
 /*Helper macro to get a byte from buf and increment *buf*/
 #define __NEXT_BYTE(type) ((type)((*buf)++) & 0xFF)
 
-static jit_ulong tvm_ulong_from_bytes
+static jit_ulong __tvm_ulong_from_bytes
     (unsigned char** buf)
 {
     jit_ulong result = __NEXT_BYTE(jit_ulong);
@@ -79,7 +74,7 @@ static jit_ulong tvm_ulong_from_bytes
     return result;
 }
 
-static jit_long tvm_long_from_bytes
+static jit_long __tvm_long_from_bytes
     (unsigned char** buf)
 {
     jit_long result = __NEXT_BYTE(jit_long);
@@ -93,7 +88,7 @@ static jit_long tvm_long_from_bytes
     return result;
 }
 
-static jit_uint tvm_uint_from_bytes
+static jit_uint __tvm_uint_from_bytes
     (unsigned char** buf)
 {
     jit_uint result = __NEXT_BYTE(jit_uint);
@@ -103,7 +98,7 @@ static jit_uint tvm_uint_from_bytes
     return result;
 }
 
-static jit_int tvm_int_from_bytes
+static jit_int __tvm_int_from_bytes
     (unsigned char** buf)
 {
     jit_int result = __NEXT_BYTE(jit_int);
@@ -113,7 +108,7 @@ static jit_int tvm_int_from_bytes
     return result;
 }
 
-static jit_ushort tvm_ushort_from_bytes
+static jit_ushort __tvm_ushort_from_bytes
     (unsigned char** buf)
 {
     jit_ushort result = __NEXT_BYTE(jit_ushort);
@@ -121,7 +116,7 @@ static jit_ushort tvm_ushort_from_bytes
     return result;
 }
 
-static jit_short tvm_short_from_bytes
+static jit_short __tvm_short_from_bytes
     (unsigned char** buf)
 {
     jit_short result = __NEXT_BYTE(jit_short);
@@ -129,19 +124,43 @@ static jit_short tvm_short_from_bytes
     return result;
 }
 
-static jit_float32 tvm_float32_from_bytes
+static jit_float32 __tvm_float32_from_bytes
     (unsigned char** buf)
 {
-    jit_uint tmp = tvm_uint_from_bytes(buf);
+    jit_uint tmp = __tvm_uint_from_bytes(buf);
     return *((jit_float32*)&tmp);
 }
 
-static jit_float64 tvm_float64_from_bytes
+static jit_float64 __tvm_float64_from_bytes
     (unsigned char** buf)
 {
-    jit_ulong tmp = tvm_ulong_from_bytes(buf);
+    jit_ulong tmp = __tvm_ulong_from_bytes(buf);
     return *((jit_float64*)&tmp);
 }
+
+#define tvm_short_from_bytes(buf) \
+    __tvm_short_from_bytes(&buf)
+
+#define tvm_ushort_from_bytes(buf) \
+    __tvm_ushort_from_bytes(&buf)
+
+#define tvm_int_from_bytes(buf) \
+    __tvm_int_from_bytes(&buf)
+
+#define tvm_uint_from_bytes(buf) \
+    __tvm_uint_from_bytes(&buf)
+
+#define tvm_long_from_bytes(buf) \
+    __tvm_long_from_bytes(&buf)
+    
+#define tvm_ulong_from_bytes(buf) \
+    __tvm_ulong_from_bytes(&buf)
+
+#define tvm_float32_from_bytes(buf) \
+    __tvm_float32_from_bytes(&buf)
+
+#define tvm_float64_from_bytes(buf) \
+    __tvm_float64_from_bytes(&buf)
 
 #endif
 #endif

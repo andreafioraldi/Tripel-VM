@@ -63,6 +63,7 @@ int tvm_function_build
 {
     tvm_func_data_t data = tvm_function_get_data(function);
     
+    //alloc vm stack
     jit_value_t* stack = jit_malloc(data->stack_len * sizeof(jit_value_t));
     jit_value_t* stack_base = stack;
     
@@ -76,68 +77,68 @@ int tvm_function_build
                 jit_insn_nop(function);
                 break;
             }
-            case OP_LD_I8:
+            case OP_LD_I8: //imm
             {
                 *stack = jit_value_create_nint_constant(function, jit_type_sbyte, *(++buf));
                 ++stack;
                 break;
             }
-            case OP_LD_U8:
+            case OP_LD_U8: //imm
             {
                 *stack = jit_value_create_nint_constant(function, jit_type_ubyte, *(++buf));
                 ++stack;
                 break;
             }
-            case OP_LD_I16:
+            case OP_LD_I16: //imm
             {
                 jit_short tmp = tvm_short_from_bytes(buf);
                 *stack = jit_value_create_nint_constant(function, jit_type_short, tmp);
                 ++stack;
                 break;
             }
-            case OP_LD_U16:
+            case OP_LD_U16: //imm
             {
                 jit_ushort tmp = tvm_ushort_from_bytes(buf);
                 *stack = jit_value_create_nint_constant(function, jit_type_ushort, tmp);
                 ++stack;
                 break;
             }
-            case OP_LD_I32:
+            case OP_LD_I32: //imm
             {
                 jit_int tmp = tvm_int_from_bytes(buf);
                 *stack = jit_value_create_nint_constant(function, jit_type_int, tmp);
                 ++stack;
                 break;
             }
-            case OP_LD_U32:
+            case OP_LD_U32: //imm
             {
                 jit_uint tmp = tvm_uint_from_bytes(buf);
                 *stack = jit_value_create_nint_constant(function, jit_type_uint, tmp);
                 ++stack;
                 break;
             }
-            case OP_LD_I64:
+            case OP_LD_I64: //imm
             {
                 jit_long tmp = tvm_long_from_bytes(buf);
                 *stack = jit_value_create_long_constant(function, jit_type_long, tmp);
                 ++stack;
                 break;
             }
-            case OP_LD_U64:
+            case OP_LD_U64: //imm
             {
                 jit_ulong tmp = tvm_ulong_from_bytes(buf);
                 *stack = jit_value_create_long_constant(function, jit_type_ulong, tmp);
                 ++stack;
                 break;
             }
-            case OP_LD_F32:
+            case OP_LD_F32: //imm
             {
                 jit_float32 tmp = tvm_float32_from_bytes(buf);
                 *stack = jit_value_create_float32_constant(function, jit_type_float32, tmp);
                 ++stack;
                 break;
             }
-            case OP_LD_F64:
+            case OP_LD_F64: //imm
             {
                 jit_float64 tmp = tvm_float64_from_bytes(buf);
                 *stack = jit_value_create_float64_constant(function, jit_type_float64, tmp);
@@ -150,7 +151,7 @@ int tvm_function_build
                 ++stack;
                 break;
             }
-            case OP_LD_STR:
+            case OP_LD_STR: //imm
             {
                 jit_ushort tmp = tvm_ushort_from_bytes(buf);
                 *stack = jit_value_create_nint_constant(function, tvm_type_string, data->module->strings[tmp]);
@@ -171,82 +172,119 @@ int tvm_function_build
             }
             case OP_AT:
             {
-                
+                --stack;
+                jit_value_t idx = *stack;
+                --stack;
+                jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
+                *stack = jit_insn_load_elem(function, *stack, idx, type);
                 break;
             }
-            case OP_AT_C:
+            case OP_AT_C: //imm
             {
-                
+                jit_uint tmp = tvm_uint_from_bytes(buf);
+                --stack;
+                jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
+                *stack = jit_insn_add_relative(function, *stack, tmp*jit_type_get_size(type), type);
                 break;
             }
             case OP_AT_1:
             {
-                
+                --stack;
+                jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
+                *stack = jit_insn_add_relative(function, *stack, jit_type_get_size(type), type);
                 break;
             }
             case OP_AT_2:
             {
-                
+                --stack;
+                jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
+                *stack = jit_insn_add_relative(function, *stack, 2*jit_type_get_size(type), type);
                 break;
             }
             case OP_AT_3:
             {
-                
+                --stack;
+                jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
+                *stack = jit_insn_add_relative(function, *stack, 3*jit_type_get_size(type), type);
                 break;
             }
             case OP_AD_AT:
             {
-                
+                --stack;
+                jit_value_t idx = *stack;
+                --stack;
+                jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
+                *stack = jit_insn_load_elem_address(function, *stack, idx, type);
                 break;
             }
             case OP_AD_AT_C:
             {
-                
+                jit_uint tmp = tvm_uint_from_bytes(buf);
+                --stack;
+                *stack = jit_insn_add_relative(function, *stack, tmp*jit_type_get_size(jit_value_get_type(*stack)));
                 break;
             }
             case OP_AD_AT_1:
             {
-                
+                --stack;
+                *stack = jit_insn_add_relative(function, *stack, jit_type_get_size(jit_value_get_type(*stack)));
                 break;
             }
             case OP_AD_AT_2:
             {
-                
+                --stack;
+                *stack = jit_insn_add_relative(function, *stack, 2*jit_type_get_size(jit_value_get_type(*stack)));
                 break;
             }
             case OP_AD_AT_3:
             {
-                
+                --stack;
+                *stack = jit_insn_add_relative(function, *stack, 3*jit_type_get_size(jit_value_get_type(*stack)));
                 break;
             }
             case OP_FIELD:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                --stack;
+                jit_type_t type = jit_value_get_type(*stack);
+                *stack = jit_insn_load_relative(function, *stack, jit_type_get_offset(type, tmp), jit_type_get_field(type, tmp));
                 break;
             }
             case OP_FIELD_0:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                --stack;
+                jit_type_t type = jit_value_get_type(*stack);
+                *stack = jit_insn_load_relative(function, *stack, 0, jit_type_get_field(type, 0));
                 break;
             }
             case OP_FIELD_1:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                --stack;
+                *stack = jit_insn_load_relative(function, *stack, jit_type_get_offset(type, 1), jit_type_get_field(type, 1));
                 break;
             }
             case OP_FIELD_2:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                --stack;
+                *stack = jit_insn_load_relative(function, *stack, jit_type_get_offset(type, 2), jit_type_get_field(type, 2));
                 break;
             }
             case OP_FIELD_3:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                --stack;
+                *stack = jit_insn_load_relative(function, *stack, jit_type_get_offset(type, 3), jit_type_get_field(type, 3));
                 break;
             }
             case OP_PT_FIELD:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                --stack;
+                jit_type_t type = jit_value_get_type(*stack);
+                *stack = jit_insn_add_relative(function, *stack, jit_type_get_offset(type, tmp));
                 break;
             }
             case OP_PT_FIELD_0:
@@ -956,10 +994,15 @@ int tvm_function_build
             }
             case OP_ABORT:
             {
-                
+                jit_type_t params_types[] = { jit_type_int };
+                jit_type_t sign = jit_type_create_signature(jit_abi_cdecl, jit_type_int, params_types, 1, 0);
+                --stack;
+                *stack = jit_insn_call_native(function, "abort", exit, sign, stack, EXIT_FAILURE, 0);
                 break;
             }
-            //default:
+            default:
+            fprintf(stderr, "VIRTUAL MACHINE FATAL ERROR!!! unrecognized opcode %x\n", *buf);
+            exit(EXIT_FAILURE);
         }
     }
     

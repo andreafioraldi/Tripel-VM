@@ -32,7 +32,7 @@ ${LITTLE_ENDIAN_DEFINITION}
 #ifdef LITTLE_ENDIAN
 
 #define tvm_short_from_bytes(buf) \
-    (buf+=2, *(jit_short*)buf)
+    ((buf)+=2, *(jit_short*)(buf))
 
 #define tvm_ushort_from_bytes(buf) \
     ((buf)+=2, *(jit_ushort*)(buf))

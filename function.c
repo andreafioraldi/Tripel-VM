@@ -47,13 +47,13 @@ jit_function_t tvm_function_create
 {
     //create the jit function
     jit_function_t func = jit_function_create(data->module->program->context, signature);
-    
+
     //set function data
     jit_function_set_meta(func, 0, data, &jit_free, 1);
-    
+
     //set build function
     jit_function_set_on_demand_compiler(func, &tvm_function_build);
-    
+
     return func;
 }
 
@@ -62,11 +62,14 @@ int tvm_function_build
     (jit_function_t function)
 {
     tvm_func_data_t data = tvm_function_get_data(function);
-    
+
     //alloc vm stack
     jit_value_t* stack = jit_malloc(data->stack_len * sizeof(jit_value_t));
     jit_value_t* stack_base = stack;
-    
+
+    //alloc local variables
+    jit_value_t* locals = jit_malloc(data->locals_num * sizeof(jit_value_t));
+
     unsigned char* buf;
     for(buf = data->begin; buf < data->end; ++buf)
     {
@@ -162,12 +165,14 @@ int tvm_function_build
             {
                 --stack;
                 *stack = jit_insn_address_of(function, *stack);
+                ++stack;
                 break;
             }
             case OP_VAL:
             {
                 --stack;
                 *stack = jit_insn_load_relative(function, *stack, 0, jit_type_get_ref(jit_value_get_type(*stack)));
+                ++stack;
                 break;
             }
             case OP_AT:
@@ -177,6 +182,7 @@ int tvm_function_build
                 --stack;
                 jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
                 *stack = jit_insn_load_elem(function, *stack, idx, type);
+                ++stack;
                 break;
             }
             case OP_AT_C: //imm
@@ -184,28 +190,32 @@ int tvm_function_build
                 jit_uint tmp = tvm_uint_from_bytes(buf);
                 --stack;
                 jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
-                *stack = jit_insn_add_relative(function, *stack, tmp*jit_type_get_size(type), type);
+                *stack = jit_insn_add_relative(function, *stack, tmp*jit_type_get_size(type));
+                ++stack;
                 break;
             }
             case OP_AT_1:
             {
                 --stack;
                 jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
-                *stack = jit_insn_add_relative(function, *stack, jit_type_get_size(type), type);
+                *stack = jit_insn_add_relative(function, *stack, jit_type_get_size(type));
+                ++stack;
                 break;
             }
             case OP_AT_2:
             {
                 --stack;
                 jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
-                *stack = jit_insn_add_relative(function, *stack, 2*jit_type_get_size(type), type);
+                *stack = jit_insn_add_relative(function, *stack, 2*jit_type_get_size(type));
+                ++stack;
                 break;
             }
             case OP_AT_3:
             {
                 --stack;
                 jit_type_t type = jit_type_get_ref(jit_value_get_type(*stack));
-                *stack = jit_insn_add_relative(function, *stack, 3*jit_type_get_size(type), type);
+                *stack = jit_insn_add_relative(function, *stack, 3*jit_type_get_size(type));
+                //++stack
                 break;
             }
             case OP_AD_AT:
@@ -262,6 +272,7 @@ int tvm_function_build
             {
                 jit_ushort tmp = tvm_ushort_from_bytes(buf);
                 --stack;
+                jit_type_t type = jit_value_get_type(*stack);
                 *stack = jit_insn_load_relative(function, *stack, jit_type_get_offset(type, 1), jit_type_get_field(type, 1));
                 break;
             }
@@ -269,6 +280,7 @@ int tvm_function_build
             {
                 jit_ushort tmp = tvm_ushort_from_bytes(buf);
                 --stack;
+                jit_type_t type = jit_value_get_type(*stack);
                 *stack = jit_insn_load_relative(function, *stack, jit_type_get_offset(type, 2), jit_type_get_field(type, 2));
                 break;
             }
@@ -276,6 +288,7 @@ int tvm_function_build
             {
                 jit_ushort tmp = tvm_ushort_from_bytes(buf);
                 --stack;
+                jit_type_t type = jit_value_get_type(*stack);
                 *stack = jit_insn_load_relative(function, *stack, jit_type_get_offset(type, 3), jit_type_get_field(type, 3));
                 break;
             }
@@ -289,707 +302,751 @@ int tvm_function_build
             }
             case OP_PT_FIELD_0:
             {
-                
+                --stack;
+                jit_type_t type = jit_value_get_type(*stack);
+                *stack = jit_insn_address_of(function, stack[0]);
                 break;
             }
             case OP_PT_FIELD_1:
             {
-                
+
                 break;
             }
             case OP_PT_FIELD_2:
             {
-                
+
                 break;
             }
             case OP_PT_FIELD_3:
             {
-                
+
                 break;
             }
             case OP_AD_FIELD:
             {
-                
+
                 break;
             }
             case OP_AD_FIELD_0:
             {
-                
+
                 break;
             }
             case OP_AD_FIELD_1:
             {
-                
+
                 break;
             }
             case OP_AD_FIELD_2:
             {
-                
+
                 break;
             }
             case OP_AD_FIELD_3:
             {
-                
+
                 break;
             }
             case OP_AD_PT_FIELD:
             {
-                
+
                 break;
             }
             case OP_AD_PT_FIELD_0:
             {
-                
+
                 break;
             }
             case OP_AD_PT_FIELD_1:
             {
-                
+
                 break;
             }
             case OP_AD_PT_FIELD_2:
             {
-                
+
                 break;
             }
             case OP_AD_PT_FIELD_3:
             {
-                
+
                 break;
             }
             case OP_PUSH:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                *stack = jit_insn_load(function, locals[tmp]);
+                ++stack;
                 break;
             }
             case OP_PUSH_0:
             {
-                
+                *stack = jit_insn_load(function, locals[0]);
+                ++stack;
                 break;
             }
             case OP_PUSH_1:
             {
-                
+                *stack = jit_insn_load(function, locals[1]);
+                ++stack;
                 break;
             }
             case OP_PUSH_2:
             {
-                
+                *stack = jit_insn_load(function, locals[2]);
+                ++stack;
                 break;
             }
             case OP_PUSH_3:
             {
-                
+                *stack = jit_insn_load(function, locals[3]);
+                ++stack;
                 break;
             }
             case OP_PUSH_AD:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                *stack = jit_insn_address_of(function, locals[tmp]);
+                ++stack;
                 break;
             }
             case OP_PUSH_AD_0:
             {
-                
+                *stack = jit_insn_address_of(function, locals[0]);
+                ++stack;
                 break;
             }
             case OP_PUSH_AD_1:
             {
-                
+                *stack = jit_insn_address_of(function, locals[1]);
+                ++stack;
                 break;
             }
             case OP_PUSH_AD_2:
             {
-                
+                *stack = jit_insn_address_of(function, locals[2]);
+                ++stack;
                 break;
             }
             case OP_PUSH_AD_3:
             {
-                
+                *stack = jit_insn_address_of(function, locals[3]);
+                ++stack;
                 break;
             }
             case OP_PUSH_ARG:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                *stack = jit_value_get_param(function, tmp);
+                ++stack;
                 break;
             }
             case OP_PUSH_ARG_0:
             {
-                
+                *stack = jit_value_get_param(function, 0);
+                ++stack;
                 break;
             }
             case OP_PUSH_ARG_1:
             {
-                
+                *stack = jit_value_get_param(function, 1);
+                ++stack;
                 break;
             }
             case OP_PUSH_ARG_2:
             {
-                
+                *stack = jit_value_get_param(function, 2);
+                ++stack;
                 break;
             }
             case OP_PUSH_ARG_3:
             {
-                
+                *stack = jit_value_get_param(function, 3);
+                ++stack;
                 break;
             }
             case OP_PUSH_GBL:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                *stack = jit_value_create_nint_constant(function, data->module->globals[tmp].type, data->module->globals[tmp].data);
+                ++stack;
                 break;
             }
             case OP_PUSH_E_GBL:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                *stack = jit_value_create_nint_constant(function, data->module->ext_globals[tmp]->type, data->module->ext_globals[tmp]->data);
+                ++stack;
                 break;
             }
             case OP_POP:
             {
-                
+                --stack;
                 break;
             }
             case OP_DUP:
             {
-                
+                *stack = jit_insn_load(function, *(stack-1));
+                ++stack;
                 break;
             }
             case OP_CLEAR:
             {
-                
+                stack = stack_base;
                 break;
             }
             case OP_DECL_I8:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_sbyte);
                 break;
             }
             case OP_DECL_U8:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_ubyte);
                 break;
             }
             case OP_DECL_I16:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_short);
                 break;
             }
             case OP_DECL_U16:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_ushort);
                 break;
             }
             case OP_DECL_I32:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_int);
                 break;
             }
             case OP_DECL_U32:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_uint);
                 break;
             }
             case OP_DECL_I64:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_long);
                 break;
             }
             case OP_DECL_U64:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_ulong);
                 break;
             }
             case OP_DECL_F32:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_float32);
                 break;
             }
             case OP_DECL_F64:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_float64);
                 break;
             }
             case OP_DECL_VP:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                locals[tmp] = jit_value_create(function, jit_type_void_ptr);
                 break;
             }
             case OP_DECL_PT:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                jit_type_t type = tvm_module_get_pointer_type(data->module, &buf);
+                locals[tmp] = jit_value_create(function, type);
                 break;
             }
             case OP_DECL_ST:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                jit_ushort idx = tvm_ushort_from_bytes(buf);
+                jit_type_t type = data->module->structs[idx].type;
+                locals[tmp] = jit_value_create(function, type);
                 break;
             }
             case OP_DECL_E_ST:
             {
-                
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                jit_ushort idx = tvm_ushort_from_bytes(buf);
+                jit_type_t type = data->module->ext_structs[idx]->type;
+                locals[tmp] = jit_value_create(function, type);
                 break;
             }
             case OP_DECL_T:
             {
-                
+
                 break;
             }
             case OP_STORE:
             {
-                
+
                 break;
             }
             case OP_STORE_0:
             {
-                
+
                 break;
             }
             case OP_STORE_1:
             {
-                
+
                 break;
             }
             case OP_STORE_2:
             {
-                
+
                 break;
             }
             case OP_STORE_3:
             {
-                
+
                 break;
             }
             case OP_STORE_VAL:
             {
-                
+
                 break;
             }
             case OP_STORE_VAL_0:
             {
-                
+
                 break;
             }
             case OP_STORE_VAL_1:
             {
-                
+
                 break;
             }
             case OP_STORE_VAL_2:
             {
-                
+
                 break;
             }
             case OP_STORE_VAL_3:
             {
-                
+
                 break;
             }
             case OP_STORE_GBL:
             {
-                
+
                 break;
             }
             case OP_STORE_E_GBL:
             {
-                
+
                 break;
             }
             case OP_SET_AT:
             {
-                
+
                 break;
             }
             case OP_SET_AT_0:
             {
-                
+
                 break;
             }
             case OP_SET_AT_1:
             {
-                
+
                 break;
             }
             case OP_SET_AT_2:
             {
-                
+
                 break;
             }
             case OP_SET_AT_3:
             {
-                
+
                 break;
             }
             case OP_SET_AT_C:
             {
-                
+
                 break;
             }
             case OP_SET_FIELD:
             {
-                
+
                 break;
             }
             case OP_SET_FIELD_0:
             {
-                
+
                 break;
             }
             case OP_SET_FIELD_1:
             {
-                
+
                 break;
             }
             case OP_SET_FIELD_2:
             {
-                
+
                 break;
             }
             case OP_SET_FIELD_3:
             {
-                
+
                 break;
             }
             case OP_SET_PT_FIELD:
             {
-                
+
                 break;
             }
             case OP_SET_PT_FIELD_0:
             {
-                
+
                 break;
             }
             case OP_SET_PT_FIELD_1:
             {
-                
+
                 break;
             }
             case OP_SET_PT_FIELD_2:
             {
-                
+
                 break;
             }
             case OP_SET_PT_FIELD_3:
             {
-                
+
                 break;
             }
             case OP_S_ALLOC:
             {
-                
+
                 break;
             }
             case OP_S_ALLOC_C:
             {
-                
+
                 break;
             }
             case OP_GC_ALLOC:
             {
-                
+
                 break;
             }
             case OP_GC_ALLOC_C:
             {
-                
+
                 break;
             }
             case OP_GC_ATOM_ALLOC:
             {
-                
+
                 break;
             }
             case OP_GC_ATOM_ALLOC_C:
             {
-                
+
                 break;
             }
             case OP_CALL:
             {
-                
+
                 break;
             }
             case OP_N_CALL:
             {
-                
+
                 break;
             }
             case OP_E_CALL:
             {
-                
+
                 break;
             }
             case OP_EN_CALL:
             {
-                
+
                 break;
             }
             case OP_RET:
             {
-                
+
                 break;
             }
             case OP_RET_STD:
             {
-                
+
                 break;
             }
             case OP_FUNC_AD:
             {
-                
+
                 break;
             }
             case OP_E_FUNC_AD:
             {
-                
+
                 break;
             }
             case OP_N_FUNC_AD:
             {
-                
+
                 break;
             }
             case OP_EN_FUNC_AD:
             {
-                
+
                 break;
             }
             case OP_CALL_PT:
             {
-                
+
                 break;
             }
             case OP_VAL_ASSIGN:
             {
-                
+
                 break;
             }
             case OP_SIZEOF:
             {
-                
+
                 break;
             }
             case OP_SIZEOF_T:
             {
-                
+
                 break;
             }
             case OP_SIZEOF_T_MUL:
             {
-                
+
                 break;
             }
             case OP_MINUM:
             {
-                
+
                 break;
             }
             case OP_ADD:
             {
-                
+
                 break;
             }
             case OP_SUB:
             {
-                
+
                 break;
             }
             case OP_MUL:
             {
-                
+
                 break;
             }
             case OP_DIV:
             {
-                
+
                 break;
             }
             case OP_REM:
             {
-                
+
                 break;
             }
             case OP_INC:
             {
-                
+
                 break;
             }
             case OP_DEC:
             {
-                
+
                 break;
             }
             case OP_NEG:
             {
-                
+
                 break;
             }
             case OP_AND:
             {
-                
+
                 break;
             }
             case OP_OR:
             {
-                
+
                 break;
             }
             case OP_XOR:
             {
-                
+
                 break;
             }
             case OP_NOT:
             {
-                
+
                 break;
             }
             case OP_SHL:
             {
-                
+
                 break;
             }
             case OP_SHR:
             {
-                
+
                 break;
             }
             case OP_EQ:
             {
-                
+
                 break;
             }
             case OP_NEQ:
             {
-                
+
                 break;
             }
             case OP_LT:
             {
-                
+
                 break;
             }
             case OP_LE:
             {
-                
+
                 break;
             }
             case OP_GT:
             {
-                
+
                 break;
             }
             case OP_GE:
             {
-                
+
                 break;
             }
             case OP_IS_NULL:
             {
-                
+
                 break;
             }
             case OP_TO_BOOL:
             {
-                
+
                 break;
             }
             case OP_TO_BOOL_N:
             {
-                
+
                 break;
             }
             case OP_JMP:
             {
-                
+
                 break;
             }
             case OP_JMP_IF:
             {
-                
+
                 break;
             }
             case OP_JMP_IF_N:
             {
-                
+
                 break;
             }
             case OP_LABEL:
             {
-                
+
                 break;
             }
             case OP_CAST_I8:
             {
-                
+
                 break;
             }
             case OP_CAST_U8:
             {
-                
+
                 break;
             }
             case OP_CAST_I16:
             {
-                
+
                 break;
             }
             case OP_CAST_U16:
             {
-                
+
                 break;
             }
             case OP_CAST_I32:
             {
-                
+
                 break;
             }
             case OP_CAST_U32:
             {
-                
+
                 break;
             }
             case OP_CAST_I64:
             {
-                
+
                 break;
             }
             case OP_CAST_U64:
             {
-                
+
                 break;
             }
             case OP_CAST_F32:
             {
-                
+
                 break;
             }
             case OP_CAST_F64:
             {
-                
+
                 break;
             }
             case OP_CAST_VP:
             {
-                
+
                 break;
             }
             case OP_CAST_PT:
             {
-                
+
                 break;
             }
             case OP_CAST_ST:
             {
-                
+
                 break;
             }
             case OP_CAST_E_ST:
             {
-                
+
                 break;
             }
             case OP_CAST_T:
             {
-                
+
                 break;
             }
             case OP_ABORT:
@@ -1005,10 +1062,9 @@ int tvm_function_build
             exit(EXIT_FAILURE);
         }
     }
-    
+
     jit_free(stack_base);
-    
+    jit_free(locals);
+
     return JIT_RESULT_OK;
 }
-
-

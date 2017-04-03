@@ -334,6 +334,35 @@ struct _tvm_program;
 typedef struct _tvm_program* tvm_program_t;
 typedef struct _tvm_module* tvm_module_t;
 
+/*Simple char*->void* map*/
+struct _tvm_map
+{
+    int* hashcodes;
+    char** keys;
+    int count;
+    int allocd;
+
+    void** data;
+};
+
+typedef struct _tvm_map* tvm_map_t;
+
+/*Alloc a map*/
+tvm_map_t tvm_map_create
+    (int initial_size);
+
+/*Free a map*/
+void tvm_map_free
+    (tvm_map_t map);
+
+/*Add an element to the map (no check for the duplicate keys)*/
+void tvm_map_add
+    (tvm_map_t map, char* key, void* data);
+
+/*Get an element from the map, NULL if not present*/
+void* tvm_map_get
+    (tvm_map_t map, char* key);
+
 /*
 Record used to store all info nedded by a function to be build.
 */
@@ -410,47 +439,39 @@ struct _tvm_module
 {
     tvm_program_t program;
     char* name;//must not freed
-    
+
     unsigned char* bytecode;
     unsigned char* bytecode_end;
-    
-    char** structs_names;//pointers in bytecode 
-    char** globals_names;
-    char** c_funcs_names;
-    char** funcs_names;
-    
+
+    tvm_map_t structs_map;//pointers in bytecode
+    tvm_map_t globals_map;
+    tvm_map_t c_funcs_map;
+    tvm_map_t funcs_map;
+
     jit_sbyte** strings;
     tvm_struct_t* structs;
     tvm_global_var_t* globals;
     tvm_funcptr_t* c_funcs;
-    
+
     jit_function_t start;
     jit_function_t* funcs;
-    
+
     tvm_struct_t** ext_structs;
     tvm_global_var_t** ext_globals;
     tvm_funcptr_t** ext_c_funcs;
     jit_function_t** ext_funcs;
-    
+
     jit_ushort strings_len;
     jit_ushort structs_len;
     jit_ushort globals_len;
     jit_ushort c_funcs_len;
     jit_ushort funcs_len;
-    
+
     jit_ushort ext_structs_len;
     jit_ushort ext_globals_len;
     jit_ushort ext_c_funcs_len;
     jit_ushort ext_funcs_len;
 };
-
-/*Read an ushort and get a struct by index from a module*/
-#define tvm_module_get_struct_type(module, buf) \
-    jit_type_copy((module)->structs[tvm_ushort_from_bytes(buf)].type)
-
-/*Read an ushort and get an external struct by index from a module*/
-#define tvm_module_get_lib_struct_type(module, buf) \
-    jit_type_copy((module)->ext_structs[tvm_ushort_from_bytes(buf)]->type)
 
 /*Read and get a type associated with a module*/
 jit_type_t tvm_module_get_type
@@ -476,25 +497,13 @@ tvm_module_t tvm_module_create_build
 void tvm_module_free
     (tvm_module_t module);
 
-//linked list
-struct _tvm_module_node;
-typedef struct _tvm_module_node* tvm_module_node_t;
-
-/*Node of a linked list of modules*/
-struct _tvm_module_node
-{
-    tvm_module_t module;
-    tvm_module_node_t next;
-};
-
-
 /*
 Record that represents a Tripel program.
 */
 struct _tvm_program
 {
     tvm_module_t start;
-    tvm_module_node_t modules;
+    tvm_map_t modules;
     jit_context_t context;
 };
 
@@ -503,8 +512,8 @@ tvm_program_t tvm_program_create
     (unsigned char* bytecode, unsigned char* bytecode_end);
 
 /*Search a module in a program*/
-tvm_module_t tvm_program_find_module
-    (tvm_program_t program, char* name);
+#define tvm_program_find_module(program, name) \
+    (tvm_module_t) tvm_map_get(program->modules, name)
 
 /*Build start module*/
 #define tvm_program_build(program) \

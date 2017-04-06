@@ -32,28 +32,28 @@ ${LITTLE_ENDIAN_DEFINITION}
 #ifdef LITTLE_ENDIAN
 
 #define tvm_short_from_bytes(buf) \
-    ((buf)+=2, *(jit_short*)(buf))
+    (*(jit_short*)((buf+=2)-2))
 
 #define tvm_ushort_from_bytes(buf) \
-    ((buf)+=2, *(jit_ushort*)(buf))
+    (*(jit_ushort*)((buf+=2)-2))
 
 #define tvm_int_from_bytes(buf) \
-    ((buf)+=4, *(jit_int*)(buf))
+    (*(jit_int*)((buf+=4)-4))
 
 #define tvm_uint_from_bytes(buf) \
-    ((buf)+=4, *(jit_uint*)(buf))
+    (*(jit_uint*)((buf+=4)-4))
 
 #define tvm_long_from_bytes(buf) \
-    ((buf)+=8, *(jit_long*)(buf))
-    
+    (*(jit_long*)((buf+=8)-8))
+
 #define tvm_ulong_from_bytes(buf) \
-    ((buf)+=8, *(jit_ulong*)(buf))
+    (*(jit_ulong*)((buf+=8)-8))
 
 #define tvm_float32_from_bytes(buf) \
-    ((buf)+=4, *(jit_float32*)(buf))
+    (*(jit_float32*)((buf+=4)-4))
 
 #define tvm_float64_from_bytes(buf) \
-    ((buf)+=8, *(jit_float64*)(buf))
+    (*(jit_float64*)((buf+=8)-8))
 
 #else
 
@@ -152,7 +152,7 @@ static jit_float64 __tvm_float64_from_bytes
 
 #define tvm_long_from_bytes(buf) \
     __tvm_long_from_bytes(&buf)
-    
+
 #define tvm_ulong_from_bytes(buf) \
     __tvm_ulong_from_bytes(&buf)
 

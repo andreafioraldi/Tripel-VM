@@ -69,10 +69,10 @@ int tvm_function_build
 
     //alloc local variables
     jit_value_t* locals = jit_malloc(data->locals_num * sizeof(jit_value_t));
-
+printf("BUILD %p   %p\n",data->begin,data->end);
     unsigned char* buf;
     for(buf = data->begin; buf < data->end; ++buf)
-    {
+    {printf("%x   %x\n", *buf, OP_STORE_GBL);
         switch(*buf)
         {
             case OP_NOP:
@@ -641,7 +641,10 @@ int tvm_function_build
             }
             case OP_STORE_GBL:
             {
-
+                jit_ushort tmp = tvm_ushort_from_bytes(buf);
+                jit_value_t addr = jit_value_create_nint_constant(function, data->module->globals[tmp].type, data->module->globals[tmp].data);
+                --stack;
+                jit_insn_store_relative(function, addr, 0, *stack);
                 break;
             }
             case OP_STORE_E_GBL:

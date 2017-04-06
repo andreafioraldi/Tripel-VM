@@ -140,7 +140,7 @@ void tvm_module_build
         //free types array
         jit_free(fields_types);
     }
-
+printf(" globals %X\n", buf-module->bytecode);
     //read the number of global vars
     num = tvm_ushort_from_bytes(buf);
 
@@ -163,8 +163,8 @@ void tvm_module_build
         module->globals[i].data = GC_MALLOC(type_size);
         jit_memset(module->globals[i].data, 0, type_size);
 
-        //set type
-        module->globals[i].type = type;
+        //set pointer type
+        module->globals[i].type = jit_type_create_pointer(type, 0);
 
         tvm_map_add(module->globals_map, name, module->globals+i);
     }
@@ -247,7 +247,6 @@ void tvm_module_build
 
     //get function code length
     jit_uint len = tvm_uint_from_bytes(buf);
-
     tvm_func_data_t func_data = tvm_func_data_create(module, buf, buf + len, "<start>", stack_len, locals_num, labels_num);
 
     module->start = tvm_function_create(tvm_start_signature, func_data);
